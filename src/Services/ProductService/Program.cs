@@ -1,3 +1,4 @@
+using MassTransit; // <-- BU EKLENDİ
 using Microsoft.EntityFrameworkCore;
 using ProductService.Infrastructure;
 using System.Reflection;
@@ -5,23 +6,34 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database Configuration
-// Registers the DbContext with SQL Server connection string
 builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // 2. MediatR Configuration
-// Automatically scans the assembly to register all Commands, Queries, and Handlers
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
-// 3. API & Swagger Configuration
+// 3. MassTransit & RabbitMQ Configuration
+builder.Services.AddMassTransit(x =>
+{
+    // Default Port: 5672, User: guest, Pass: guest
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+    });
+});
+
+// 4. API & Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 4. Auto-Migration Strategy
-// Automatically applies pending migrations when the service starts
+// 5. Auto-Migration
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -32,18 +44,16 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Log errors if migration fails (Best Practice)
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while migrating the database.");
     }
 }
 
-// 5. Middleware Pipeline
+// 6. Middleware
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Note: HttpsRedirection is disabled for local development to prevent port issues with Docker/Gateway
-// app.UseHttpsRedirection();
+// HttpsRedirection is disabled to avoid port conflicts in local microservices environment
 
 app.UseAuthorization();
 
