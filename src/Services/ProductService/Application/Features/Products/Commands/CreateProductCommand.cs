@@ -6,10 +6,17 @@ using Shared.Events;
 
 namespace ProductService.Application.Features.Products.Commands;
 
-// Command: Represents the request to create a new product
-public record CreateProductCommand(string Name, decimal Price, string Description, int Stock, string PictureUrl) : IRequest<int>;
+// ARTIK RECORD DEĞİL CLASS (Daha güvenli binding için)
+public class CreateProductCommand : IRequest<int>
+{
+    public string Name { get; set; } = string.Empty; // Varsayılan değer
+    public decimal Price { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public int Stock { get; set; }
+    public string PictureUrl { get; set; } = string.Empty;
+}
 
-// Handler: Contains the business logic for the CreateProductCommand
+// Handler Aynen Kalıyor
 public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, int>
 {
     private readonly ProductDbContext _context;
@@ -23,7 +30,6 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
     public async Task<int> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        // 1. Persist data to the local database
         var product = new Product
         {
             Name = request.Name,
@@ -36,8 +42,6 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 2. Publish Integration Event to RabbitMQ:
-        // Notifies other microservices (like Basket or Stock) that a new product is created
         await _publishEndpoint.Publish<IProductCreatedEvent>(new
         {
             ProductId = product.Id,

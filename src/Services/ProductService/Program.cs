@@ -1,6 +1,9 @@
-using MassTransit; // <-- BU EKLENDİ
+using FluentValidation;
+using MassTransit;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductService.Infrastructure;
+using Shared.Behaviors;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,13 +12,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. MediatR Configuration
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+// 2. Global Exception Handling Registration
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
-// 3. MassTransit & RabbitMQ Configuration
+// 3. MediatR & Validation Pipeline Configuration
+// Registers validators and sets up the validation behavior in the pipeline
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddMediatR(cfg => 
+{
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>)); 
+});
+
+// 4. MassTransit (RabbitMQ) Configuration
 builder.Services.AddMassTransit(x =>
 {
-    // Default Port: 5672, User: guest, Pass: guest
     x.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host("localhost", "/", h =>
@@ -26,14 +38,22 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-// 4. API & Swagger
+// 5. API Controller Configuration
 builder.Services.AddControllers();
+
+// IMPORTANT: Disable default ASP.NET Core model validation filter.
+// We want our FluentValidation + MediatR pipeline to handle validations manually.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 5. Auto-Migration
+// 6. Automatic Database Migration
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -45,18 +65,18 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "Database migration failed.");
     }
 }
 
-// 6. Middleware
+// 7. Middleware Pipeline
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// HttpsRedirection is disabled to avoid port conflicts in local microservices environment
+// Register ExceptionHandler middleware first to catch all errors
+app.UseExceptionHandler(); 
 
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

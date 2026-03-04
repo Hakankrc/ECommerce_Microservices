@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using ProductService.Application.Features.Products.Commands;
 using ProductService.Application.Features.Products.Queries;
+using ProductService.Domain;
 
 namespace ProductService.Controllers;
 
@@ -16,9 +17,6 @@ public class ProductController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>
-    /// Retrieves all products from the database via CQRS Query.
-    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -26,12 +24,11 @@ public class ProductController : ControllerBase
         return Ok(products);
     }
 
-    /// <summary>
-    /// Creates a new product via CQRS Command.
-    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductCommand command)
     {
+        // Validation logic is handled by ValidationBehavior pipeline.
+        // We can safely send the command to the handler.
         var productId = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetAll), new { id = productId }, command);
     }
