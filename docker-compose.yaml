@@ -1,36 +1,38 @@
-version: '3.8'
+version: '3.4'
 
 services:
-  sqlserver:
+  # 1. SQL Server (Product Service için)
+  shopdb:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: shop-sqlserver
+    container_name: shop-db
     environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=Sifre123_Guclu!
+      - MSSQL_SA_PASSWORD=Password123!
     ports:
       - "1433:1433"
-    networks:
-      - shop-network
+    volumes:
+      - sqlvolume:/var/opt/mssql
 
-  rabbitmq:
-    image: rabbitmq:3-management
+  # 2. Redis (Basket Service için) - İŞTE BU EKSİKTİ!
+  shopredis:
+    image: redis:alpine
+    container_name: shop-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisvolume:/data
+
+  # 3. RabbitMQ (Haberleşme için - Yarın lazım olacak)
+  shoprabbitmq:
+    image: masstransit/rabbitmq
     container_name: shop-rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
-    networks:
-      - shop-network
+    volumes:
+      - rabbitmqvolume:/var/lib/rabbitmq
 
-  seq:
-    image: datalust/seq:latest
-    container_name: shop-seq
-    environment:
-      - ACCEPT_EULA=Y
-    ports:
-      - "5341:80"
-    networks:
-      - shop-network
-
-networks:
-  shop-network:
-    driver: bridge
+volumes:
+  sqlvolume:
+  redisvolume:
+  rabbitmqvolume:
