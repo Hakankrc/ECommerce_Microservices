@@ -13,7 +13,7 @@ services:
     volumes:
       - sqlvolume:/var/opt/mssql
 
-  # 2. Redis (Basket Service için) - İŞTE BU EKSİKTİ!
+  # 2. Redis (Basket Service için) 
   shopredis:
     image: redis:alpine
     container_name: shop-redis
@@ -21,6 +21,16 @@ services:
       - "6379:6379"
     volumes:
       - redisvolume:/data
+
+  seq:
+    image: datalust/seq:latest
+    container_name: ecommerce-seq
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=12345678  # <-- Buraya istediğin şifreyi yaz
+    ports:
+      - "5341:80"
 
   # 3. RabbitMQ (Haberleşme için - Yarın lazım olacak)
   shoprabbitmq:
