@@ -6,12 +6,12 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. JWT Ayarlarını Okuma
+
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["Secret"];
 var key = Encoding.UTF8.GetBytes(secretKey!);
 
-// 2. Authentication (Kimlik Doğrulama) Servisini Ekle
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -29,10 +29,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 3. Authorization (Yetkilendirme) Politikası Tanımla
+
 builder.Services.AddAuthorization(options =>
 {
-    // "AuthenticatedUser" adında bir kural tanımlıyoruz: Sadece giriş yapmış olanlar!
+    
     options.AddPolicy("AuthenticatedUser", policy => 
         policy.RequireAuthenticatedUser());
 });
@@ -55,11 +55,11 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// 4. Middleware Sıralaması (Çok Önemli!)
-app.UseRateLimiter(); // Önce hız sınırı
 
-app.UseAuthentication(); // Sonra "Kimsin?" kontrolü
-app.UseAuthorization();  // Sonra "Yetkin var mı?" kontrolü
+app.UseRateLimiter(); 
+
+app.UseAuthentication(); 
+app.UseAuthorization();  
 
 app.MapReverseProxy();
 
