@@ -1,10 +1,7 @@
 using IdentityService.Models;
+using IdentityService.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace IdentityService.Controllers;
 
@@ -13,12 +10,16 @@ namespace IdentityService.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly ITokenService _tokenService;
 
-    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public AuthController(UserManager<ApplicationUser> userManager, 
+                          SignInManager<ApplicationUser> signInManager,
+                          ITokenService tokenService)
     {
         _userManager = userManager;
-        _configuration = configuration;
+        _signInManager = signInManager;
+        _tokenService = tokenService;
     }
 
     [HttpPost("register")]
@@ -34,56 +35,88 @@ public class AuthController : ControllerBase
 
         var result = await _userManager.CreateAsync(user, model.Password);
 
-        if (result.Succeeded)
+        if (!result.Succeeded)
         {
-            return Ok(new { Message = "Kullanıcı başarıyla oluşturuldu." });
+            return BadRequest(result.Errors);
         }
 
-        return BadRequest(result.Errors);
+        return Ok(new { Message = "Kullanıcı başarıyla oluşturuldu." });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
         var user = await _userManager.FindByEmailAsync(model.Email);
-        
-        // Kullanıcı var mı ve şifre doğru mu?
-        if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-        {
-            // Token Üretimi
-            var token = GenerateJwtToken(user);
-            return Ok(new { Token = token });
-        }
+        if (user == null) return Unauthorized("Kullanıcı bulunamadı.");
 
-        return Unauthorized(new { Message = "Email veya şifre hatalı." });
+        var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+        if (!result.Succeeded) return Unauthorized("Şifre hatalı.");
+
+        //token generation
+        var roles = await _userManager.GetRolesAsync(user);
+        var accessToken = _tokenService.GenerateAccessToken(user, roles);
+        var refreshToken = _tokenService.GenerateRefreshToken();
+
+        //Save the Refresh Token to the database
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+        await _userManager.UpdateAsync(user);
+
+        return Ok(new 
+        { 
+            AccessToken = accessToken, 
+            RefreshToken = refreshToken 
+        });
     }
 
-    private string GenerateJwtToken(ApplicationUser user)
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto tokenRequest)
     {
-        var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+        if (tokenRequest is null)
+            return BadRequest("Geçersiz istek.");
 
-        var claims = new List<Claim>
+        // Read the claims from the expired Access Token (even if it's expired)
+        var principal = _tokenService.GetPrincipalFromExpiredToken(tokenRequest.AccessToken);
+        if (principal == null)
+            return BadRequest("Geçersiz Access Token veya Refresh Token.");
+
+        var email = principal.Identity!.Name; 
+        
+        // Find the user
+        var user = await _userManager.FindByEmailAsync(email!);
+        if (user == null || user.RefreshToken != tokenRequest.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim("Name", user.Name) // Custom Claim
-        };
+            return BadRequest("Geçersiz Refresh Token veya süresi dolmuş.");
+        }
 
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["DurationInMinutes"]!)),
-            Issuer = jwtSettings["Issuer"],
-            Audience = jwtSettings["Audience"],
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature)
-        };
+        // Generate new tokens
+        var roles = await _userManager.GetRolesAsync(user);
+        var newAccessToken = _tokenService.GenerateAccessToken(user, roles);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
+        // Update the database with the new Refresh Token and its expiry time
+        user.RefreshToken = newRefreshToken;
+        await _userManager.UpdateAsync(user);
+
+        return Ok(new 
+        { 
+            AccessToken = newAccessToken, 
+            RefreshToken = newRefreshToken 
+        });
     }
 }
 
-public record RegisterDto(string Name, string Surname, string Email, string Password);
-public record LoginDto(string Email, string Password);
+
+public class RegisterDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Surname { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+public class LoginDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
