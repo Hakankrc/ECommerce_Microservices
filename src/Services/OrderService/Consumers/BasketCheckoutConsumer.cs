@@ -3,6 +3,7 @@ using OrderService.Domain;
 using OrderService.Infrastructure;
 using Shared.Events;
 
+
 namespace OrderService.Consumers;
 
 public class BasketCheckoutConsumer : IConsumer<BasketCheckoutEvent>
@@ -19,7 +20,7 @@ public class BasketCheckoutConsumer : IConsumer<BasketCheckoutEvent>
     public async Task Consume(ConsumeContext<BasketCheckoutEvent> context)
     {
         // Map event to Order entity
-        var order = new Order
+        var order = new OrderService.Domain.Order
         {
             UserName = context.Message.UserName,
             TotalPrice = context.Message.TotalPrice,

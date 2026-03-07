@@ -10,15 +10,16 @@ using IdentityService.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
 
-// 1. Serilog Yapılandırması (Kilitlenmeyi önlemek için Modern yöntem)
+// 1. Serilog Yapılandırması 
 builder.Host.UseSerilog((context, configuration) => 
 {
     configuration
         .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
         .WriteTo.Console()
-        .WriteTo.Seq("http://127.0.0.1:5341"); // SEQ satırını geri açtık
+        .WriteTo.Seq(seqUrl); 
 });
 
 // 2. Veritabanı Ayarları
@@ -106,7 +107,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. Veritabanı Migrasyonu (ŞİMDİLİK KAPALI - Uygulama açılınca geri açacağız)
+// 6. Veritabanı Migrasyonu 
 
 using (var scope = app.Services.CreateScope())
 {

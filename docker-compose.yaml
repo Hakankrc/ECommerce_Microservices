@@ -1,7 +1,5 @@
-version: '3.4'
-
 services:
-  # 1. SQL Server (Product Service için)
+  # --- ALTYAPI SERVİSLERİ ---
   shopdb:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: shop-db
@@ -13,7 +11,6 @@ services:
     volumes:
       - sqlvolume:/var/opt/mssql
 
-  # 2. Redis (Basket Service için) 
   shopredis:
     image: redis:alpine
     container_name: shop-redis
@@ -28,11 +25,9 @@ services:
     restart: unless-stopped
     environment:
       - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORD=12345678  # <-- Buraya istediğin şifreyi yaz
     ports:
       - "5341:80"
 
-  # 3. RabbitMQ (Haberleşme için - Yarın lazım olacak)
   shoprabbitmq:
     image: masstransit/rabbitmq
     container_name: shop-rabbitmq
@@ -41,6 +36,80 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmqvolume:/var/lib/rabbitmq
+
+  # --- MİKROSERVİSLER ---
+  identity-service:
+    container_name: identity-service
+    build:
+      context: .
+      dockerfile: src/Services/IdentityService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=shopdb;Database=IdentityDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
+      - Serilog__SeqUrl=http://seq
+    depends_on:
+      - shopdb
+      - seq
+
+  product-service:
+    container_name: product-service
+    build:
+      context: .
+      dockerfile: src/Services/ProductService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=shopdb;Database=ProductDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
+      - RabbitMQ__Host=shoprabbitmq
+      - Serilog__SeqUrl=http://seq
+    depends_on:
+      - shopdb
+      - shoprabbitmq
+      - seq
+
+  basket-service:
+    container_name: basket-service
+    build:
+      context: .
+      dockerfile: src/Services/BasketService/Dockerfile
+    environment:
+      - RedisSettings__ConnectionString=shopredis:6379
+      - RabbitMQ__Host=shoprabbitmq
+      - Serilog__SeqUrl=http://seq
+    depends_on:
+      - shopredis
+      - shoprabbitmq
+      - seq
+
+  order-service:
+    container_name: order-service
+    build:
+      context: .
+      dockerfile: src/Services/OrderService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=shopdb;Database=OrderDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
+      - RabbitMQ__Host=shoprabbitmq
+      - Serilog__SeqUrl=http://seq
+    depends_on:
+      - shopdb
+      - shoprabbitmq
+      - seq
+
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: .
+      dockerfile: src/Gateways/ApiGateway/Dockerfile 
+    ports:
+      - "5153:80"
+    environment:
+      - ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address=http://identity-service:80
+      - ReverseProxy__Clusters__product-cluster__Destinations__destination1__Address=http://product-service:80
+      - ReverseProxy__Clusters__basket-cluster__Destinations__destination1__Address=http://basket-service:80
+      - ReverseProxy__Clusters__order-cluster__Destinations__destination1__Address=http://order-service:80
+      - Serilog__SeqUrl=http://seq
+    depends_on:
+      - identity-service
+      - product-service
+      - basket-service
+      - order-service
 
 volumes:
   sqlvolume:

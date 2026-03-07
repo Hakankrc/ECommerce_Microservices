@@ -1,7 +1,20 @@
 using BasketService.Repositories;
 using MassTransit;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
+
+
+builder.Host.UseSerilog((context, configuration) => 
+{
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.Seq(seqUrl); // SEQ Adresi
+});
 
 // 1. Redis Configuration
 // Registers StackExchange.Redis implementation for IDistributedCache
@@ -43,6 +56,9 @@ if (builderApp.Environment.IsDevelopment())
 }
 
 builderApp.UseAuthorization();
+builderApp.UseSerilogRequestLogging();
 builderApp.MapControllers();
+
+Console.WriteLine(">>> BASKET SERVICE BASLATILIYOR... <<<");
 
 builderApp.Run();

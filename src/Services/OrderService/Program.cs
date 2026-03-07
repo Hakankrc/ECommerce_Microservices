@@ -2,8 +2,20 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Consumers;
 using OrderService.Infrastructure;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
+
+builder.Host.UseSerilog((context, configuration) => 
+{
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.Seq(seqUrl);
+});
 
 // SQL Server Configuration
 builder.Services.AddDbContext<OrderDbContext>(options =>
@@ -63,6 +75,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseSerilogRequestLogging();
 app.MapControllers();
+
+Console.WriteLine(">>> ORDER SERVICE BASLATILIYOR... <<<");
 
 app.Run();

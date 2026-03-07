@@ -5,8 +5,20 @@ using Microsoft.EntityFrameworkCore;
 using ProductService.Infrastructure;
 using Shared.Behaviors;
 using System.Reflection;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
+
+builder.Host.UseSerilog((context, configuration) => 
+{
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.Seq(seqUrl);
+});
 
 // 1. Database Configuration
 builder.Services.AddDbContext<ProductDbContext>(options =>
@@ -53,6 +65,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+
+
 // 6. Automatic Database Migration
 using (var scope = app.Services.CreateScope())
 {
@@ -75,8 +89,9 @@ app.UseSwaggerUI();
 
 // Register ExceptionHandler middleware first to catch all errors
 app.UseExceptionHandler(); 
-
 app.UseAuthorization();
+app.UseSerilogRequestLogging();
 app.MapControllers();
 
+Console.WriteLine(">>> PRODUCT SERVICE (CQRS) BASLATILIYOR... <<<");
 app.Run();
