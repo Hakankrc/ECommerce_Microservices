@@ -15,7 +15,7 @@ builder.Host.UseSerilog((context, configuration) =>
         .MinimumLevel.Override("Yarp", Serilog.Events.LogEventLevel.Information) // YARP loglarını görmek için
         .Enrich.FromLogContext()
         .WriteTo.Console()
-        .WriteTo.Seq("http://localhost:5341");
+        .WriteTo.Seq("http://seq:5341");
 });
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

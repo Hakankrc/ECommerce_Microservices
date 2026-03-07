@@ -4,6 +4,7 @@ using ProductService.Application.Features.Products.Commands;
 using ProductService.Application.Features.Products.Queries;
 using ProductService.Domain;
 
+
 namespace ProductService.Controllers;
 
 [Route("api/[controller]")]
@@ -18,6 +19,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet]
+    
     public async Task<IActionResult> GetAll()
     {
         var products = await _mediator.Send(new GetProductsQuery());

@@ -4,6 +4,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: shop-db
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=Password123!
     ports:
@@ -24,6 +25,7 @@ services:
     container_name: ecommerce-seq
     restart: unless-stopped
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ACCEPT_EULA=Y
     ports:
       - "5341:80"
@@ -44,6 +46,7 @@ services:
       context: .
       dockerfile: src/Services/IdentityService/Dockerfile
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ConnectionStrings__DefaultConnection=Server=shopdb;Database=IdentityDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
       - Serilog__SeqUrl=http://seq
     depends_on:
@@ -56,6 +59,7 @@ services:
       context: .
       dockerfile: src/Services/ProductService/Dockerfile
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ConnectionStrings__DefaultConnection=Server=shopdb;Database=ProductDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
       - RabbitMQ__Host=shoprabbitmq
       - Serilog__SeqUrl=http://seq
@@ -70,6 +74,7 @@ services:
       context: .
       dockerfile: src/Services/BasketService/Dockerfile
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - RedisSettings__ConnectionString=shopredis:6379
       - RabbitMQ__Host=shoprabbitmq
       - Serilog__SeqUrl=http://seq
@@ -84,6 +89,7 @@ services:
       context: .
       dockerfile: src/Services/OrderService/Dockerfile
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ConnectionStrings__DefaultConnection=Server=shopdb;Database=OrderDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
       - RabbitMQ__Host=shoprabbitmq
       - Serilog__SeqUrl=http://seq
@@ -100,6 +106,7 @@ services:
     ports:
       - "5153:80"
     environment:
+      - ASPNETCORE_HTTP_PORTS=80
       - ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address=http://identity-service:80
       - ReverseProxy__Clusters__product-cluster__Destinations__destination1__Address=http://product-service:80
       - ReverseProxy__Clusters__basket-cluster__Destinations__destination1__Address=http://basket-service:80
