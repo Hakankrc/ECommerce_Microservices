@@ -28,16 +28,17 @@ builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 
 // 3. MassTransit (RabbitMQ) Configuration
 // Currently setting up the transport. Consumers will be added later.
-builder.Services.AddMassTransit(x =>
-{
-    // Using RabbitMQ with MassTransit
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host("localhost", "/", h =>
-        {
+builder.Services.AddMassTransit(x => {
+    x.UsingRabbitMq((context, cfg) => {
+        // Konfigürasyondan "RabbitMQ:Host" değerini oku, yoksa localhost kullan
+        var rabbitHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
+        
+        cfg.Host(rabbitHost, "/", h => {
             h.Username("guest");
             h.Password("guest");
         });
+
+        cfg.ConfigureEndpoints(context);
     });
 });
 

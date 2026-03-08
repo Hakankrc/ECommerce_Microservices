@@ -9,5 +9,5 @@ public class Product
     public string PictureUrl { get; set; } = string.Empty; // Resim yolu
     public int Stock { get; set; }
     
-    // CreatedAt gibi alanlar da eklenebilir ama şimdilik sade tutalım.
+    //  We can also add fields like CreatedAt, but let's keep it simple for now.
 }

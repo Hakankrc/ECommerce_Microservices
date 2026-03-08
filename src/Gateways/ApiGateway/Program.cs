@@ -12,7 +12,7 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration
         .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-        .MinimumLevel.Override("Yarp", Serilog.Events.LogEventLevel.Information) // YARP loglarını görmek için
+        .MinimumLevel.Override("Yarp", Serilog.Events.LogEventLevel.Information) // To see YARP logs
         .Enrich.FromLogContext()
         .WriteTo.Console()
         .WriteTo.Seq("http://seq:5341");
@@ -23,10 +23,11 @@ var secretKey = jwtSettings["Secret"];
 var key = Encoding.UTF8.GetBytes(secretKey!);
 
 
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false; // Dev ortamı için
+        options.RequireHttpsMetadata = false; //In development, you might want to set this to false, but in production, it should be true for security reasons.
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -57,11 +58,11 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("fixed-window", opt =>
     {
-        opt.PermitLimit = 5;
         opt.Window = TimeSpan.FromSeconds(10);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 2;
+        opt.PermitLimit = 10;
+        opt.QueueLimit = 0;
     });
+
 });
 
 builder.Services.AddCors(options =>
@@ -75,6 +76,7 @@ builder.Services.AddCors(options =>
 });
 var app = builder.Build();
 
+app.UseRateLimiter();
 app.UseCors("AllowAll");
 app.UseRateLimiter(); 
 app.UseAuthentication(); 

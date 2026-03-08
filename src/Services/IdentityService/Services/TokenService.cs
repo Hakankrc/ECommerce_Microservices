@@ -29,7 +29,7 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        // Rolleri ekle
+        // Add roles to claims
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -68,7 +68,7 @@ public class TokenService : ITokenService
             ValidateIssuer = false,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-            ValidateLifetime = false // Süresi dolmuş token'ı da okumak istiyoruz
+            ValidateLifetime = false //We want to read expired tokens as well
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

@@ -1,0 +1,16 @@
+# Klasörler
+**/bin/
+**/obj/
+**/.vs/
+**/.git/
+**/node_modules/
+**/.next/
+**/out/
+
+# Dosyalar
+**/*.user
+**/*.db
+**/*.log
+.dockerignore
+docker-compose*
+README.md

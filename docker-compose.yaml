@@ -1,5 +1,5 @@
 services:
-  # --- ALTYAPI SERVİSLERİ ---
+  # Infrastructure Services
   shopdb:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: shop-db
@@ -23,12 +23,14 @@ services:
   seq:
     image: datalust/seq:latest
     container_name: ecommerce-seq
-    restart: unless-stopped
+    restart: always
     environment:
-      - ASPNETCORE_HTTP_PORTS=80
       - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true 
     ports:
       - "5341:80"
+    volumes:
+      - seq_data:/data
 
   shoprabbitmq:
     image: masstransit/rabbitmq
@@ -39,7 +41,31 @@ services:
     volumes:
       - rabbitmqvolume:/var/lib/rabbitmq
 
-  # --- MİKROSERVİSLER ---
+  # --- MICROSERVICES ---
+
+  frontend-home:
+    container_name: frontend-home
+    build:
+      context: ./frontend-home
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5153/api # Gateway 
+    depends_on:
+      - api-gateway
+
+  frontend-cart:
+    container_name: frontend-cart
+    build:
+      context: ./frontend-cart
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5153/api
+    depends_on:
+      - api-gateway
   identity-service:
     container_name: identity-service
     build:
@@ -122,3 +148,4 @@ volumes:
   sqlvolume:
   redisvolume:
   rabbitmqvolume:
+  seq_data:

@@ -13,7 +13,7 @@ public class ProductDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Fiyat alanı için hassasiyet ayarı (SQL Server ister)
+        // Set decimal precision for Price to avoid truncation
         modelBuilder.Entity<Product>()
             .Property(p => p.Price)
             .HasColumnType("decimal(18,2)");

@@ -12,7 +12,7 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
 
-// 1. Serilog Yapılandırması 
+// 1. Serilog configuration
 builder.Host.UseSerilog((context, configuration) => 
 {
     configuration
@@ -22,11 +22,11 @@ builder.Host.UseSerilog((context, configuration) =>
         .WriteTo.Seq(seqUrl); 
 });
 
-// 2. Veritabanı Ayarları
+// 2. Database Settings
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 3. Identity Ayarları
+// 3. Identity Settings
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequiredLength = 6;
@@ -39,7 +39,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// 4. JWT Ayarları
+// 4. JWT Settings
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["Secret"];
 
@@ -72,7 +72,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 5. Servis Kayıtları
+// 5. Service Registrations
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -107,7 +107,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. Veritabanı Migrasyonu 
+// 6. Database Migration
 
 using (var scope = app.Services.CreateScope())
 {
@@ -135,7 +135,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication(); 
 app.UseAuthorization(); 
 
-// Serilog İstek Loglama (Giriş çıkışları görmek için)
+// Serilog Request Logging (to see incoming requests and responses)
 app.UseSerilogRequestLogging();
 
 app.MapControllers();

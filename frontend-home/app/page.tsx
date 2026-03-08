@@ -10,7 +10,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Ürünleri Gateway üzerinden çekiyoruz
+  // Fetch products through the Gateway
   const fetchProducts = async () => {
     try {
       const response = await axios.get("http://localhost:5153/api/product");
@@ -22,22 +22,22 @@ export default function Home() {
     }
   };
 
-  // 2. Akıllı Sepete Ekleme (Mevcut sepeti çekip üzerine ekler)
+  // Smart Add to Basket (Fetches current basket and adds on top)
   const addToBasket = async (product: Product) => {
     try {
-      // Önce mevcut sepeti soralım
+      
       const currentRes = await axios.get("http://localhost:5153/api/Basket/Hakan-123");
       let currentItems = currentRes.data.items || currentRes.data.Items || [];
 
-      // Ürün zaten var mı?
+      
       const existingItem = currentItems.find((i: any) => (i.productId || i.ProductId) === product.id.toString());
 
       if (existingItem) {
-        // Varsa miktarını artır (Backend hem küçük hem büyük harf gönderebilir, ikisini de güncelliyoruz)
+        
         if (existingItem.quantity !== undefined) existingItem.quantity += 1;
         if (existingItem.Quantity !== undefined) existingItem.Quantity += 1;
       } else {
-        // Yoksa yeni ekle (PascalCase - Backend'in sevdiği format)
+        
         currentItems.push({
           ProductId: product.id.toString(),
           ProductName: product.name,
@@ -47,14 +47,14 @@ export default function Home() {
         });
       }
 
-      // Güncel listeyi gönder
+      // Send the updated list
       await axios.post("http://localhost:5153/api/Basket", {
         UserName: "Hakan-123",
         Items: currentItems
       });
 
       toast.success(`${product.name} sepete eklendi! 🛒`);
-      // Navbar'daki sayıyı uyandır
+      // Dispatch basket updated event
       window.dispatchEvent(new Event("basketUpdated"));
       
     } catch (err) {

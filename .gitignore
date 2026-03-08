@@ -484,7 +484,7 @@ $RECYCLE.BIN/
 *.swp
 
 # ==================================
-# ÖZEL GÜVENLİK KURALLARI (Case Study)
+# CUSTOM SECURITY RULES (Case Study)
 # ==================================
 **/appsettings.json
 **/appsettings.Development.json

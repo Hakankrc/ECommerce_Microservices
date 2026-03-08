@@ -14,7 +14,7 @@ export default function BasketPage() {
   const fetchBasket = async () => {
     try {
       const response = await axios.get("http://localhost:5153/api/Basket/Hakan-123");
-      // Büyük/Küçük harf sigortası
+      
       const normalized = {
         UserName: response.data.userName || response.data.UserName,
         Items: response.data.items || response.data.Items || []
@@ -44,7 +44,7 @@ export default function BasketPage() {
     if (item) {
       const currentQty = item.quantity !== undefined ? item.quantity : item.Quantity;
       item.Quantity = currentQty + delta;
-      item.quantity = currentQty + delta; // İki tarafı da güncelle
+      item.quantity = currentQty + delta; 
 
       if (item.Quantity <= 0) {
         removeItem(productId);

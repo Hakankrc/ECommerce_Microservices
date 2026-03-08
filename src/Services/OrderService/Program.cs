@@ -22,24 +22,17 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // MassTransit & RabbitMQ Configuration
-builder.Services.AddMassTransit(x =>
-{
-    // Register consumer
-    x.AddConsumer<BasketCheckoutConsumer>();
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host("localhost", "/", h =>
-        {
+builder.Services.AddMassTransit(x => {
+    x.UsingRabbitMq((context, cfg) => {
+        // Read "RabbitMQ:Host" from configuration, if not found use localhost
+        var rabbitHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
+        
+        cfg.Host(rabbitHost, "/", h => {
             h.Username("guest");
             h.Password("guest");
         });
 
-        // Configure queue subscription
-        cfg.ReceiveEndpoint("basket-checkout-queue", e =>
-        {
-            e.ConfigureConsumer<BasketCheckoutConsumer>(context);
-        });
+        cfg.ConfigureEndpoints(context);
     });
 });
 
