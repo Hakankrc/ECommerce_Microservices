@@ -1,105 +1,182 @@
 "use client";
 
+import Cookies from 'js-cookie';
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
-import { TrashIcon, PlusIcon, MinusIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
+import { TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-export default function BasketPage() {
-  const [basket, setBasket] = useState<any>(null);
+export default function CartPage() {
+  const [basketItems, setBasketItems] = useState<any[]>([]);
+  const [totalPrice, setTotalPrice] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false); 
+
+  const getUserFromToken = (token: string | undefined) => {
+    if (!token) return null;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const payload = JSON.parse(jsonPayload);
+      
+      // .NET Identity Claim Map 
+      return (
+        payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || 
+        payload.email || 
+        payload.sub || 
+        payload.unique_name
+      );
+    } catch (e) {
+      console.error("CartPage: Token decode hatası:", e);
+      return null;
+    }
+  };
 
   const fetchBasket = async () => {
+    
+    const token = Cookies.get("access_token"); 
+    const userName = getUserFromToken(token);
+
+    if (!token || !userName) {
+        setLoading(false);
+        return;
+    }
+
     try {
-      const response = await axios.get("http://localhost:5153/api/Basket/Hakan-123");
+      const response = await axios.get(`http://localhost:5153/api/Basket/${userName}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const items = response.data.items || response.data.Items || [];
+      setBasketItems(items);
       
-      const normalized = {
-        UserName: response.data.userName || response.data.UserName,
-        Items: response.data.items || response.data.Items || []
-      };
-      setBasket(normalized);
-    } catch (error) {
-      console.error("Sepet hatası:", error);
+      const total = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      setTotalPrice(total);
+    } catch (error: any) {
+      console.error("Sepet çekilemedi:", error);
+      if (error.response?.status === 401) toast.error("Oturumunuz geçersiz! Lütfen tekrar giriş yapın.");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateBasket = async (updatedItems: any[]) => {
+  const removeItem = async (productId: string) => {
+    const token = Cookies.get("access_token");
+    const userName = getUserFromToken(token);
+    
+    if (!token || !userName) return;
+
+    // Create a new list that only includes items that are not being removed
+    const updatedItems = basketItems.filter(item => (item.productId || item.ProductId) !== productId);
+
     try {
-      const payload = { UserName: "Hakan-123", Items: updatedItems };
-      await axios.post("http://localhost:5153/api/Basket", payload);
-      setBasket(payload);
+      
+      await axios.post("http://localhost:5153/api/Basket", {
+        UserName: userName,
+        Items: updatedItems
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setBasketItems(updatedItems);
+      const total = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      setTotalPrice(total);
+      
+      toast.info("Ürün sepetten çıkarıldı.");
+      
+      
       window.dispatchEvent(new Event("basketUpdated"));
+
     } catch (error) {
-      toast.error("Güncellenemedi.");
+      console.error("Silme hatası:", error);
+      toast.error("Ürün silinemedi.");
     }
   };
 
-  const changeQuantity = (productId: string, delta: number) => {
-    const newItems = [...basket.Items];
-    const item = newItems.find((i: any) => (i.productId || i.ProductId) === productId);
-    if (item) {
-      const currentQty = item.quantity !== undefined ? item.quantity : item.Quantity;
-      item.Quantity = currentQty + delta;
-      item.quantity = currentQty + delta; 
+  useEffect(() => {
+    setMounted(true);
+    fetchBasket();
+  }, []);
 
-      if (item.Quantity <= 0) {
-        removeItem(productId);
-      } else {
-        updateBasket(newItems);
-      }
-    }
-  };
+  
+  if (!mounted) return null;
 
-  const removeItem = (productId: string) => {
-    const newItems = basket.Items.filter((i: any) => (i.productId || i.ProductId) !== productId);
-    updateBasket(newItems);
-    toast.info("Ürün çıkarıldı.");
-  };
-
-  useEffect(() => { fetchBasket(); }, []);
-
-  if (loading) return <div className="p-20 text-center font-bold">Yükleniyor...</div>;
-
-  const items = basket?.Items || [];
-  const totalPrice = items.reduce((sum: number, i: any) => sum + (i.price || i.Price) * (i.quantity || i.Quantity), 0);
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      <span className="ml-4 font-bold text-indigo-600">Sepetiniz yükleniyor...</span>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <ToastContainer />
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-black text-gray-900 mb-8">🛒 Sepetim</h1>
-        {items.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl shadow-sm text-center border-2 border-dashed">
-            <p className="text-gray-500 mb-6">Sepetin boş kral!</p>
-            <Link href="/" className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">Vitrine Dön</Link>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+      <ToastContainer position="bottom-right" />
+      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-3xl p-8">
+        
+        
+        <div className="flex justify-between items-center mb-10 border-b pb-6">
+            <h1 className="text-4xl font-black text-slate-800 tracking-tight italic">
+              SEPETİM <span className="text-indigo-600">🛒</span>
+            </h1>
+            <a href="http://localhost:3000" className="flex items-center text-indigo-600 font-bold hover:text-indigo-800 transition-colors bg-indigo-50 px-4 py-2 rounded-xl">
+               <ArrowLeftIcon className="h-5 w-5 mr-2" /> Vitrine Dön
+            </a>
+        </div>
+
+        {basketItems.length === 0 ? (
+          <div className="text-center py-20 border-4 border-dotted border-slate-100 rounded-3xl">
+            <p className="text-slate-400 text-2xl font-medium mb-6">Sepetin bomboş kral... 💨</p>
+            {!getUserFromToken(Cookies.get("access_token")) && (
+              <p className="text-amber-600 bg-amber-50 inline-block px-4 py-2 rounded-lg font-bold mb-6">
+                ⚠️ Not: Giriş yapmamış görünüyorsunuz!
+              </p>
+            )}
+            <br />
+            <a href="http://localhost:3000" className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition">
+               Ürünlere Bak
+            </a>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-4">
-              {items.map((item: any) => (
-                <div key={item.productId || item.ProductId} className="bg-white p-5 rounded-3xl shadow-sm flex items-center space-x-6 border">
-                  <img src={item.pictureUrl || item.PictureUrl} className="h-20 w-20 object-cover rounded-2xl" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-800">{item.productName || item.ProductName}</h3>
-                    <p className="text-indigo-600 font-bold">{item.price || item.Price} ₺</p>
+          <div className="space-y-6">
+            {basketItems.map((item) => (
+              <div key={item.productId || item.ProductId} className="flex flex-col sm:flex-row justify-between items-center p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:shadow-md transition-all">
+                <div className="flex items-center space-x-6 w-full sm:w-auto">
+                  <div className="bg-white p-2 rounded-2xl shadow-sm">
+                    <img src={item.pictureUrl || "https://via.placeholder.com/150"} alt="" className="w-24 h-24 object-cover rounded-xl" />
                   </div>
-                  <div className="flex items-center bg-gray-100 rounded-xl p-1">
-                    <button onClick={() => changeQuantity(item.productId || item.ProductId, -1)} className="p-2 hover:text-red-500"><MinusIcon className="h-5 w-5" /></button>
-                    <span className="font-bold w-8 text-center">{item.quantity || item.Quantity}</span>
-                    <button onClick={() => changeQuantity(item.productId || item.ProductId, 1)} className="p-2 hover:text-green-500"><PlusIcon className="h-5 w-5" /></button>
+                  <div>
+                    <h3 className="font-extrabold text-2xl text-slate-800">{item.productName || item.ProductName}</h3>
+                    <p className="text-slate-500 font-bold">{item.price} ₺ <span className="text-xs text-slate-400">x</span> {item.quantity}</p>
                   </div>
-                  <button onClick={() => removeItem(item.productId || item.ProductId)} className="text-gray-300 hover:text-red-500 p-2"><TrashIcon className="h-6 w-6" /></button>
                 </div>
-              ))}
-            </div>
-            <div className="bg-white p-8 rounded-3xl shadow-xl h-fit sticky top-24">
-              <h2 className="text-xl font-bold mb-6">Özet</h2>
-              <div className="text-3xl font-black text-indigo-600 mb-8">{totalPrice} ₺</div>
-              <button className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg">ÖDEMEYE GEÇ</button>
+                
+                <div className="flex items-center justify-between w-full sm:w-auto mt-6 sm:mt-0 space-x-8 border-t sm:border-t-0 pt-4 sm:pt-0">
+                  <span className="text-3xl font-black text-indigo-600">
+                    {(item.price * item.quantity).toFixed(2)} ₺
+                  </span>
+                  <button onClick={() => removeItem(item.productId || item.ProductId)} className="p-4 text-red-500 hover:bg-red-100 rounded-2xl transition-all shadow-sm bg-white">
+                    <TrashIcon className="h-7 w-7" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            
+            <div className="mt-12 pt-8 border-t-4 border-slate-50 flex flex-col sm:flex-row justify-between items-center">
+                <div className="mb-8 sm:mb-0 text-center sm:text-left">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Toplam Ödenecek</p>
+                    <p className="text-6xl font-black text-slate-900 leading-tight">
+                      {totalPrice.toFixed(2)} <span className="text-2xl text-indigo-600">₺</span>
+                    </p>
+                </div>
+                <button className="w-full sm:w-auto bg-slate-900 text-white px-16 py-6 rounded-3xl font-black text-2xl hover:bg-green-600 transition-all shadow-2xl hover:shadow-green-200 transform hover:-translate-y-1">
+                    ÖDEMEYE GEÇ 💳
+                </button>
             </div>
           </div>
         )}

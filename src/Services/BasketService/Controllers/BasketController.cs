@@ -4,11 +4,13 @@ using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Events;
 using System.Net;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BasketService.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class BasketController : ControllerBase
 {
     private readonly IBasketRepository _repository;

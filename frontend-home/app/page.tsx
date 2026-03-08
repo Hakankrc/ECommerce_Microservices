@@ -1,43 +1,78 @@
 "use client";
 
+import Cookies from 'js-cookie';
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Product, CustomerBasket } from "@/types"; 
+import { Product } from "@/types"; 
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Fetch products through the Gateway
-  const fetchProducts = async () => {
+  // KRİTİK: Token Çözücü
+  const getUserFromToken = (token: string) => {
     try {
-      const response = await axios.get("http://localhost:5153/api/product");
-      setProducts(response.data);
-    } catch (err) {
-      console.error("Ürünler çekilemedi:", err);
-    } finally {
-      setLoading(false);
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const payload = JSON.parse(jsonPayload);
+      console.log("Hakan Kral - Payload Yakalandı:", payload);
+
+      
+      return (
+        payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || 
+        payload.email || 
+        payload.sub || 
+        payload.unique_name
+      );
+    } catch (e) {
+      console.error("Token decode hatası:", e);
+      return null;
     }
   };
-
-  // Smart Add to Basket (Fetches current basket and adds on top)
   const addToBasket = async (product: Product) => {
+    const token = Cookies.get('access_token');
+    
+    console.log("--- SEPETE EKLEME DENEMESİ ---");
+    console.log("1. Cookies'ten okunan token:", token ? "VAR (Uzun metin)" : "YOK!");
+
+    if (!token) {
+      toast.info("Sepete eklemek için giriş yapmalısınız! 🔒");
+      return;
+    }
+
+    const userName = getUserFromToken(token);
+    console.log("2. Token'dan çözülen Kullanıcı Adı:", userName);
+
+    if (!userName) {
+      toast.error("Token var ama kullanıcı adın okunamadı! Konsola bak.");
+      return;
+    }
+
+    const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+
     try {
-      
-      const currentRes = await axios.get("http://localhost:5153/api/Basket/Hakan-123");
-      let currentItems = currentRes.data.items || currentRes.data.Items || [];
+      console.log("3. Backend'e istek atılıyor...");
+      let currentItems: any[] = [];
+      try {
+        const currentRes = await axios.get(`http://localhost:5153/api/Basket/${userName}`, authHeader);
+        currentItems = currentRes.data.items || currentRes.data.Items || [];
+      } catch (err) {
+        console.log("Sepet boş, yeni oluşturulacak.");
+      }
 
-      
       const existingItem = currentItems.find((i: any) => (i.productId || i.ProductId) === product.id.toString());
-
       if (existingItem) {
-        
         if (existingItem.quantity !== undefined) existingItem.quantity += 1;
-        if (existingItem.Quantity !== undefined) existingItem.Quantity += 1;
+        else if (existingItem.Quantity !== undefined) existingItem.Quantity += 1;
       } else {
-        
         currentItems.push({
           ProductId: product.id.toString(),
           ProductName: product.name,
@@ -47,57 +82,56 @@ export default function Home() {
         });
       }
 
-      // Send the updated list
       await axios.post("http://localhost:5153/api/Basket", {
-        UserName: "Hakan-123",
+        UserName: userName,
         Items: currentItems
-      });
+      }, authHeader);
 
       toast.success(`${product.name} sepete eklendi! 🛒`);
-      // Dispatch basket updated event
       window.dispatchEvent(new Event("basketUpdated"));
       
     } catch (err) {
-      console.error("Ekleme hatası:", err);
-      toast.error("Sepete eklenirken hata oluştu.");
+      console.error("Backend Hatası:", err);
+      toast.error("Sunucu sepeti kaydedemedi.");
     }
   };
 
   useEffect(() => {
+    setMounted(true);
+    const fetchProducts = async () => {
+        try {
+          const response = await axios.get("http://localhost:5153/api/product");
+          setProducts(response.data);
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    };
     fetchProducts();
+    setIsLoggedIn(!!Cookies.get('access_token'));
   }, []);
+
+  if (!mounted) return null;
 
   return (
     <main className="min-h-screen bg-gray-50 p-10">
-      <ToastContainer /> 
+      <ToastContainer position="bottom-right" /> 
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-black mb-12 text-center text-indigo-900 tracking-tighter">
-          🔥 MICROSERVICES SHOWCASE
-        </h1>
-
-        {loading ? (
-          <div className="text-center py-20 animate-pulse text-indigo-600 font-bold">Yükleniyor...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="flex justify-between items-center mb-12">
+            <h1 className="text-4xl font-black text-indigo-900 tracking-tighter">🔥 HAKAN STORE</h1>
+            <div className={`px-4 py-2 rounded-full font-bold shadow-sm ${isLoggedIn ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+               {isLoggedIn ? '🟢 Oturum Açık' : '🔴 Misafir'}
+            </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {products.map((product) => (
-              <div key={product.id} className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all border border-gray-100 overflow-hidden group">
-                <div className="h-64 overflow-hidden bg-gray-100">
-                   <img src={product.pictureUrl} alt={product.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                </div>
-                <div className="p-8">
-                  <h2 className="text-2xl font-bold mb-3 text-gray-800">{product.name}</h2>
-                  <p className="text-gray-500 mb-8 text-sm leading-relaxed">{product.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-3xl font-black text-indigo-600">{product.price} ₺</span>
-                    <button onClick={() => addToBasket(product)} className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-2xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100">
-                      Ekle
+                <div key={product.id} className="bg-white rounded-3xl p-8 shadow-sm">
+                    <img src={product.pictureUrl} className="h-40 w-full object-cover rounded-xl mb-4" />
+                    <h2 className="text-xl font-bold">{product.name}</h2>
+                    <button onClick={() => addToBasket(product)} className="mt-4 w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">
+                        Ekle
                     </button>
-                  </div>
                 </div>
-              </div>
             ))}
-          </div>
-        )}
+        </div>
       </div>
     </main>
   );
