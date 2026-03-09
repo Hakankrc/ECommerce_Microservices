@@ -35,6 +35,6 @@ public class BasketCheckoutConsumer : IConsumer<BasketCheckoutEvent>
         _dbContext.Orders.Add(order);
         await _dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("✅ Sipariş başarıyla oluşturuldu! Order ID: {OrderId}", order.Id);
+        _logger.LogInformation("Order created successfully. Order ID: {OrderId}", order.Id);
     }
 }

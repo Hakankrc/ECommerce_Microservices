@@ -46,13 +46,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10">
-        <h2 className="text-3xl font-black text-center text-indigo-900 mb-8">KRAL GİRİŞİ 🦅</h2>
+        <h2 className="text-3xl font-black text-center text-indigo-900 mb-8">GİRİŞ YAP</h2>
         {error && <p className="text-red-500 text-sm mb-4 text-center font-bold">{error}</p>}
         <form onSubmit={handleLogin} className="space-y-6">
           <input
             type="email"
             placeholder="Email"
-            className="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full p-4 border border-gray-300 rounded-2xl bg-white text-black focus:ring-2 focus:ring-indigo-500 outline-none"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -60,7 +60,7 @@ export default function LoginPage() {
           <input
             type="password"
             placeholder="Şifre"
-            className="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full p-4 border border-gray-300 rounded-2xl bg-white text-black focus:ring-2 focus:ring-indigo-500 outline-none"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

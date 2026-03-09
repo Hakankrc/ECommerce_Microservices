@@ -40,17 +40,17 @@ public class AuthController : ControllerBase
             return BadRequest(result.Errors);
         }
 
-        return Ok(new { Message = "Kullanıcı başarıyla oluşturuldu." });
+        return Ok(new { Message = "User has been created successfully." });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
         var user = await _userManager.FindByEmailAsync(model.Email);
-        if (user == null) return Unauthorized("Kullanıcı bulunamadı.");
+        if (user == null) return Unauthorized("User not found.");
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-        if (!result.Succeeded) return Unauthorized("Şifre hatalı.");
+        if (!result.Succeeded) return Unauthorized("Invalid password.");
 
         //token generation
         var roles = await _userManager.GetRolesAsync(user);
@@ -73,12 +73,12 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto tokenRequest)
     {
         if (tokenRequest is null)
-            return BadRequest("Geçersiz istek.");
+            return BadRequest("Invalid request.");
 
         // Read the claims from the expired Access Token (even if it's expired)
         var principal = _tokenService.GetPrincipalFromExpiredToken(tokenRequest.AccessToken);
         if (principal == null)
-            return BadRequest("Geçersiz Access Token veya Refresh Token.");
+            return BadRequest("Invalid access token or refresh token.");
 
         var email = principal.Identity!.Name; 
         
@@ -86,7 +86,7 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(email!);
         if (user == null || user.RefreshToken != tokenRequest.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
         {
-            return BadRequest("Geçersiz Refresh Token veya süresi dolmuş.");
+            return BadRequest("Invalid or expired refresh token.");
         }
 
         // Generate new tokens

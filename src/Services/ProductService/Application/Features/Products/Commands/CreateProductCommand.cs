@@ -6,7 +6,7 @@ using Shared.Events;
 
 namespace ProductService.Application.Features.Products.Commands;
 
-// ARTIK RECORD DEĞİL CLASS (Daha güvenli binding için)
+
 public class CreateProductCommand : IRequest<int>
 {
     public string Name { get; set; } = string.Empty; // Varsayılan değer
@@ -16,7 +16,7 @@ public class CreateProductCommand : IRequest<int>
     public string PictureUrl { get; set; } = string.Empty;
 }
 
-// Handler Aynen Kalıyor
+
 public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, int>
 {
     private readonly ProductDbContext _context;

@@ -16,18 +16,15 @@ namespace Order.API.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            
-            _logger.LogInformation("OrderService GET isteği başarıyla karşılandı. Bağlantı tescillendi.");
-            
-            return Ok(new { message = "Order Service Ayakta ve Loglama Aktif!", time = DateTime.Now });
+            _logger.LogInformation("OrderService GET request received. Connectivity verified.");
+            return Ok(new { message = "Order Service is running and logging is active.", time = DateTime.Now });
         }
 
-        // Test için dummy bir sipariş ID'si dönen metod
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            _logger.LogInformation("{OrderId} numaralı sipariş detayı istendi.", id);
-            return Ok(new { OrderId = id, Status = "Hazırlanıyor" });
+            _logger.LogInformation("Order details requested. OrderId: {OrderId}", id);
+            return Ok(new { OrderId = id, Status = "InProgress" });
         }
     }
 }

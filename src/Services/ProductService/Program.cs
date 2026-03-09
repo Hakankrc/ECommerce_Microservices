@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductService.Infrastructure;
 using Shared.Behaviors;
+using Shared.Events;
 using System.Reflection;
 using Serilog;
+using ProductService.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 var seqUrl = builder.Configuration["Serilog:SeqUrl"] ?? "http://localhost:5341";
@@ -37,18 +39,23 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>)); 
 });
 
-// 4. MassTransit (RabbitMQ) Configuration
-builder.Services.AddMassTransit(x => {
-    x.UsingRabbitMq((context, cfg) => {
-        // Konfigürasyondan "RabbitMQ:Host" değerini oku, yoksa localhost kullan
-        var rabbitHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
-        
-        cfg.Host(rabbitHost, "/", h => {
+// 4. MassTransit (RabbitMQ) configuration
+builder.Services.AddMassTransit(x =>
+{
+    // Register BasketCheckout consumer
+    x.AddConsumer<BasketCheckoutConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h => {
             h.Username("guest");
             h.Password("guest");
         });
 
-        cfg.ConfigureEndpoints(context);
+        cfg.ReceiveEndpoint("stock-reduced-queue", e =>
+        {
+            e.ConfigureConsumer<BasketCheckoutConsumer>(context);
+        });
     });
 });
 

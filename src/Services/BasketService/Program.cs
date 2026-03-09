@@ -18,10 +18,10 @@ builder.Host.UseSerilog((context, configuration) =>
         .WriteTo.Seq(seqUrl); 
 });
 
-// 1. Redis Configuration
+// 1. Redis configuration
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.Configuration = builder.Configuration["RedisSettings:ConnectionString"];
 });
 
 // 2. Repository Registration
@@ -41,7 +41,9 @@ builder.Services.AddMassTransit(x => {
 
 
 
-var secretKey = "BuCokGizliVeUzunBirAnahtarOlmali_EnAz_32_Karakter_Olmali_123456";
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["Secret"]
+    ?? throw new Exception("JWT secret not configured for BasketService");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

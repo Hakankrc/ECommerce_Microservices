@@ -6,13 +6,14 @@ import axios from "axios";
 import { Product } from "@/types"; 
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import api from "@/lib/api";
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
+  
   // KRİTİK: Token Çözücü
   const getUserFromToken = (token: string) => {
     try {
@@ -100,7 +101,7 @@ export default function Home() {
     setMounted(true);
     const fetchProducts = async () => {
         try {
-          const response = await axios.get("http://localhost:5153/api/product");
+          const response = await api.get("/api/product");
           setProducts(response.data);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
@@ -123,14 +124,37 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {products.map((product) => (
-                <div key={product.id} className="bg-white rounded-3xl p-8 shadow-sm">
-                    <img src={product.pictureUrl} className="h-40 w-full object-cover rounded-xl mb-4" />
-                    <h2 className="text-xl font-bold">{product.name}</h2>
-                    <button onClick={() => addToBasket(product)} className="mt-4 w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">
-                        Ekle
-                    </button>
-                </div>
-            ))}
+    <div key={product.id} className="bg-white rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
+        <img src={product.pictureUrl} className="h-40 w-full object-cover rounded-xl mb-4" />
+        
+        <div className="flex justify-between items-start mb-2">
+            <h2 className="text-xl font-bold text-indigo-900">{product.name}</h2>
+            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg font-black">
+                {product.price} TL
+            </span>
+        </div>
+
+        {/* STOK GÖSTERGESİ BURAYA GELDİ ✅ */}
+        <div className="flex items-center gap-2 mb-6">
+            <div className={`h-2 w-2 rounded-full ${product.stock > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm font-medium text-gray-600">
+                {product.stock > 0 ? `${product.stock} Adet Stokta` : 'Tükendi'}
+            </span>
+        </div>
+
+        <button 
+            onClick={() => addToBasket(product)} 
+            disabled={product.stock <= 0}
+            className={`w-full py-3 rounded-xl font-bold transition-all ${
+                product.stock > 0 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+        >
+            {product.stock > 0 ? 'Ekle' : 'Stok Yok'}
+        </button>
+    </div>
+))}
         </div>
       </div>
     </main>

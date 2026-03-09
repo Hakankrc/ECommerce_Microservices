@@ -51,7 +51,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5153/api # Gateway 
+      - NEXT_PUBLIC_API_URL=http://localhost:5153 # Gateway 
     depends_on:
       - api-gateway
 
@@ -63,7 +63,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5153/api
+      - NEXT_PUBLIC_API_URL=http://localhost:5153
     depends_on:
       - api-gateway
   identity-service:
@@ -75,6 +75,7 @@ services:
       - ASPNETCORE_HTTP_PORTS=80
       - ConnectionStrings__DefaultConnection=Server=shopdb;Database=IdentityDb;User Id=sa;Password=Password123!;TrustServerCertificate=True
       - Serilog__SeqUrl=http://seq
+      - JwtSettings__Secret=BuCokGizliVeUzunBirAnahtarOlmali_EnAz_32_Karakter_Olmali_123456
     depends_on:
       - shopdb
       - seq
@@ -104,6 +105,7 @@ services:
       - RedisSettings__ConnectionString=shopredis:6379
       - RabbitMQ__Host=shoprabbitmq
       - Serilog__SeqUrl=http://seq
+      - JwtSettings__Secret=BuCokGizliVeUzunBirAnahtarOlmali_EnAz_32_Karakter_Olmali_123456
     depends_on:
       - shopredis
       - shoprabbitmq
@@ -138,6 +140,7 @@ services:
       - ReverseProxy__Clusters__basket-cluster__Destinations__destination1__Address=http://basket-service:80
       - ReverseProxy__Clusters__order-cluster__Destinations__destination1__Address=http://order-service:80
       - Serilog__SeqUrl=http://seq
+      - JwtSettings__Secret=BuCokGizliVeUzunBirAnahtarOlmali_EnAz_32_Karakter_Olmali_123456
     depends_on:
       - identity-service
       - product-service

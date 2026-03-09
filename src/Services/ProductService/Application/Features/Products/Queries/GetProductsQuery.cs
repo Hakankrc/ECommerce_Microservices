@@ -5,7 +5,7 @@ using ProductService.Infrastructure;
 
 namespace ProductService.Application.Features.Products.Queries;
 
-// İstek: Parametre yok, hepsini getir. Cevap: List<Product>
+
 public record GetProductsQuery : IRequest<List<Product>>;
 
 public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, List<Product>>
@@ -19,7 +19,7 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, List<Pr
 
     public async Task<List<Product>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        // AsNoTracking() okuma işlemini hızlandırır (Senior Taktiği)
+        
         return await _context.Products.AsNoTracking().ToListAsync(cancellationToken);
     }
 }

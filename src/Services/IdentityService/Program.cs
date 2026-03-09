@@ -45,7 +45,7 @@ var secretKey = jwtSettings["Secret"];
 
 if (string.IsNullOrEmpty(secretKey))
 {
-    throw new Exception("JWT Secret Key appsettings.json dosyasında bulunamadı!");
+    throw new Exception("JWT secret key is not configured. Please provide it via configuration or environment variables.");
 }
 
 var key = Encoding.UTF8.GetBytes(secretKey);
@@ -83,7 +83,7 @@ builder.Services.AddSwaggerGen(c =>
     
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = @"JWT Authorization header using the Bearer scheme. Örn: 'Bearer 12345abcdef'",
+        Description = @"JWT Authorization header using the Bearer scheme. Example: 'Bearer 12345abcdef'",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -120,7 +120,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Veritabanı migration hatası!");
+        logger.LogError(ex, "Database migration error.");
     }
 }
 

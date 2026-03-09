@@ -6,12 +6,52 @@ import axios from "axios";
 import { TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import api from '@/lib/api';
 
 export default function CartPage() {
   const [basketItems, setBasketItems] = useState<any[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false); 
+
+  const handleCheckout = async () => {
+    const token = Cookies.get("access_token");
+    const userName = getUserFromToken(token);
+
+    if (!token || !userName) {
+      toast.error("Önce giriş yapmalısınız! 🛡️");
+      return;
+    }
+
+    try {
+      
+      await axios.post("http://localhost:5153/api/Basket/Checkout", {
+        userName: userName,
+        firstName: "Hakan", 
+        lastName: "Kral",
+        emailAddress: userName,
+        addressLine: "Mikroservis Sokak No: 12",
+        country: "Türkiye"
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success("Ödeme başarılı! Stoklar güncelleniyor... 🚀");
+      
+      
+      setBasketItems([]);
+      setTotalPrice(0);
+
+      
+      setTimeout(() => {
+        window.location.href = "http://localhost:5153"; 
+      }, 3000);
+
+    } catch (error) {
+      console.error("Checkout hatası:", error);
+      toast.error("Ödeme işlemi başarısız oldu. ❌");
+    }
+  };
 
   const getUserFromToken = (token: string | undefined) => {
     if (!token) return null;
@@ -48,9 +88,7 @@ export default function CartPage() {
     }
 
     try {
-      const response = await axios.get(`http://localhost:5153/api/Basket/${userName}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(`/api/Basket/${userName}`);
 
       const items = response.data.items || response.data.Items || [];
       setBasketItems(items);
@@ -130,7 +168,7 @@ export default function CartPage() {
 
         {basketItems.length === 0 ? (
           <div className="text-center py-20 border-4 border-dotted border-slate-100 rounded-3xl">
-            <p className="text-slate-400 text-2xl font-medium mb-6">Sepetin bomboş kral... 💨</p>
+            <p className="text-slate-400 text-2xl font-medium mb-6">Sepetiniz boş... </p>
             {!getUserFromToken(Cookies.get("access_token")) && (
               <p className="text-amber-600 bg-amber-50 inline-block px-4 py-2 rounded-lg font-bold mb-6">
                 ⚠️ Not: Giriş yapmamış görünüyorsunuz!
@@ -174,7 +212,7 @@ export default function CartPage() {
                       {totalPrice.toFixed(2)} <span className="text-2xl text-indigo-600">₺</span>
                     </p>
                 </div>
-                <button className="w-full sm:w-auto bg-slate-900 text-white px-16 py-6 rounded-3xl font-black text-2xl hover:bg-green-600 transition-all shadow-2xl hover:shadow-green-200 transform hover:-translate-y-1">
+                <button onClick={handleCheckout} className="w-full sm:w-auto bg-slate-900 text-white px-16 py-6 rounded-3xl font-black text-2xl hover:bg-green-600 transition-all shadow-2xl hover:shadow-green-200 transform hover:-translate-y-1">
                     ÖDEMEYE GEÇ 💳
                 </button>
             </div>
