@@ -26,16 +26,16 @@ The goal of this case study is to demonstrate how independently deployable servi
 
 The system follows a layered microservices architecture.
 
-```mermaid
+
 graph TD
-    Client[Clients (Home / Cart Apps)] --> Gateway[API Gateway (YARP)]
+    Client["Clients (Home / Cart Apps)"] --> Gateway["API Gateway (YARP)"]
     
     Gateway --> Identity[IdentityService]
     Gateway --> Product[ProductService]
     Gateway --> Basket[BasketService]
     Gateway --> Order[OrderService]
     
-    Basket -.-> Redis[(Redis Cache)]
+    Basket -.-> Redis[("Redis Cache")]
     Identity -.-> SQL[(SQL Server)]
     Product -.-> SQL
     Order -.-> SQL
@@ -43,7 +43,7 @@ graph TD
     Basket -- "BasketCheckoutEvent" --> Bus((RabbitMQ))
     Bus --> Order
     Bus --> Product
-```
+
 
 ---
 
